@@ -32,6 +32,7 @@ public class AuthService {
                 .fullName(registerRequest.getFullname())
                 .email(registerRequest.getEmail())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
+                .phone(registerRequest.getPhone())
                 .role(registerRequest.getRole()==null ? Role.USER : registerRequest.getRole()).build();
         userRepository.save(user);
         var accessToken = jwtService.generateToken(user);

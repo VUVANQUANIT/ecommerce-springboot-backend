@@ -42,7 +42,7 @@ public class JwtService {
                 .subject(subject)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis()+expiration))
-                .signWith(getSignInKey())
+                .signWith(getSignInKey(),SignatureAlgorithm.HS256)
                 .compact();
     }
     public boolean isTokenValid(String token, UserDetails userDetails) {
@@ -66,42 +66,35 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
     private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSignInKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        try {
+            return Jwts.parser()
+                    .verifyWith(getSignInKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (io.jsonwebtoken.security.SecurityException | io.jsonwebtoken.MalformedJwtException e) {
+            throw new RuntimeException("JWT token không hợp lệ: " + e.getMessage(), e);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            throw new RuntimeException("JWT token đã hết hạn", e);
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi xử lý JWT token: " + e.getMessage(), e);
+        }
     }
+    
     private SecretKey getSignInKey(){
         try {
-            // Thử decode như Base64 trước
-            byte[] keyBytes = Decoders.BASE64.decode(secret);
-            // Kiểm tra độ dài key (cần ít nhất 32 bytes = 256 bits)
-            if (keyBytes.length < 32) {
-                // Nếu key quá ngắn, hash nó để đảm bảo đủ 32 bytes
-                MessageDigest sha = MessageDigest.getInstance("SHA-256");
-                keyBytes = sha.digest(keyBytes);
+            // Kiểm tra xem secret có phải là BASE64 không
+            byte[] keyBytes;
+            try {
+                keyBytes = Decoders.BASE64.decode(secret);
+            } catch (IllegalArgumentException e) {
+                // Nếu không phải BASE64, sử dụng trực tiếp string làm key
+                // Lưu ý: Secret key nên được mã hóa BASE64 để đảm bảo độ dài phù hợp
+                keyBytes = secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
             }
             return Keys.hmacShaKeyFor(keyBytes);
         } catch (Exception e) {
-            // Nếu không phải Base64, sử dụng secret trực tiếp
-            byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
-            // Đảm bảo key có ít nhất 32 bytes
-            if (keyBytes.length < 32) {
-                // Hash secret để có đủ 32 bytes
-                try {
-                    MessageDigest sha = MessageDigest.getInstance("SHA-256");
-                    keyBytes = sha.digest(keyBytes);
-                } catch (Exception ex) {
-                    throw new RuntimeException("Error creating JWT key", ex);
-                }
-            } else if (keyBytes.length > 64) {
-                // Nếu key quá dài, chỉ lấy 64 bytes đầu (tối đa cho HS512)
-                byte[] truncated = new byte[64];
-                System.arraycopy(keyBytes, 0, truncated, 0, 64);
-                keyBytes = truncated;
-            }
-            return Keys.hmacShaKeyFor(keyBytes);
+            throw new RuntimeException("Lỗi khởi tạo JWT secret key: " + e.getMessage(), e);
         }
     }
 }
