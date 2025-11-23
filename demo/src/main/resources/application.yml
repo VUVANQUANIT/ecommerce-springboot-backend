@@ -6,20 +6,29 @@ spring:
     url: jdbc:postgresql://postgres:5432/ecommerce_db
     username: postgres
     password: 123456
-    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
     properties:
-      hibernate:
-        format_sql: true
+      hibernate.format_sql: true
 
   data:
     redis:
       host: redis
       port: 6379
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui
+    tags-sorter: alpha
+    operations-sorter: alpha
+  packages-to-scan: com.example.demo
+
 
   mail:
     host: smtp.gmail.com
@@ -34,14 +43,7 @@ spring:
             enable: true
 
 jwt:
-  secret: ${JWT_SECRET:superlongsecretkey12345678901234567890}  # sẽ đổi thành biến môi trường
+  secret: ${JWT_SECRET:uLx1jHj1mPJ0xDyfq7YJ7avSdQpwqJCD0cXMNVL2o4E}  # sẽ đổi thành biến môi trường
   access-token-expiration: 86400000   # 24h
   refresh-token-expiration: 604800000 # 7 ngày
 
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    enabled: true
-    path: /swagger-ui.html
-    try-it-out-enabled: true

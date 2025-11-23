@@ -29,6 +29,22 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/error").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        // Cho phép xem sản phẩm công khai (GET requests)
+                        .requestMatchers("GET", "/api/products/**").permitAll()
+                        .requestMatchers("GET", "/api/categories/**").permitAll()
+                        .requestMatchers("GET", "/api/brands/**").permitAll()
+                        // Các endpoint tạo/sửa/xóa sản phẩm cần đăng nhập
+                        .requestMatchers("/api/products/my-products/**").authenticated()
+                        .requestMatchers("POST", "/api/products").authenticated()
+                        .requestMatchers("PUT", "/api/products/**").authenticated()
+                        .requestMatchers("DELETE", "/api/products/**").authenticated()
+                        .requestMatchers("PATCH", "/api/products/**").authenticated()
+                        // Cart và Order endpoints cần đăng nhập
+                        .requestMatchers("/api/cart/**").authenticated()
+                        .requestMatchers("/api/orders/**").authenticated()
+                        // User endpoints
+                        .requestMatchers("/api/users/me/**").authenticated()
+                        .requestMatchers("/api/addresses/**").authenticated()
                         .anyRequest().authenticated()
                 ).sessionManagement(sesion->sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
 
