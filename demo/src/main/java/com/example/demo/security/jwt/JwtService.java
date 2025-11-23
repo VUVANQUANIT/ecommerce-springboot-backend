@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import java.security.Key;
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,11 +38,12 @@ public class JwtService {
     }
     public String createToken(Map<String, Object> claims,String subject,long expiration) {
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(subject)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis()+expiration))
-                .signWith(getSignInKey(),SignatureAlgorithm.HS256).compact();
+                .claims(claims)
+                .subject(subject)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis()+expiration))
+                .signWith(getSignInKey())
+                .compact();
     }
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
@@ -64,13 +67,41 @@ public class JwtService {
     }
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
-                .setSigningKey(getSignInKey())
+                .verifyWith(getSignInKey())
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
-    private Key getSignInKey(){
-        byte[] keyBytes = Decoders.BASE64.decode(secret);
-        return Keys.hmacShaKeyFor(keyBytes);
+    private SecretKey getSignInKey(){
+        try {
+            // Thử decode như Base64 trước
+            byte[] keyBytes = Decoders.BASE64.decode(secret);
+            // Kiểm tra độ dài key (cần ít nhất 32 bytes = 256 bits)
+            if (keyBytes.length < 32) {
+                // Nếu key quá ngắn, hash nó để đảm bảo đủ 32 bytes
+                MessageDigest sha = MessageDigest.getInstance("SHA-256");
+                keyBytes = sha.digest(keyBytes);
+            }
+            return Keys.hmacShaKeyFor(keyBytes);
+        } catch (Exception e) {
+            // Nếu không phải Base64, sử dụng secret trực tiếp
+            byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+            // Đảm bảo key có ít nhất 32 bytes
+            if (keyBytes.length < 32) {
+                // Hash secret để có đủ 32 bytes
+                try {
+                    MessageDigest sha = MessageDigest.getInstance("SHA-256");
+                    keyBytes = sha.digest(keyBytes);
+                } catch (Exception ex) {
+                    throw new RuntimeException("Error creating JWT key", ex);
+                }
+            } else if (keyBytes.length > 64) {
+                // Nếu key quá dài, chỉ lấy 64 bytes đầu (tối đa cho HS512)
+                byte[] truncated = new byte[64];
+                System.arraycopy(keyBytes, 0, truncated, 0, 64);
+                keyBytes = truncated;
+            }
+            return Keys.hmacShaKeyFor(keyBytes);
+        }
     }
 }

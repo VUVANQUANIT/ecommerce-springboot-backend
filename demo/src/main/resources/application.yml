@@ -39,5 +39,9 @@ jwt:
   refresh-token-expiration: 604800000 # 7 ngày
 
 springdoc:
+  api-docs:
+    path: /v3/api-docs
   swagger-ui:
+    enabled: true
     path: /swagger-ui.html
+    try-it-out-enabled: true

@@ -23,7 +23,11 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth-> auth
-                        .requestMatchers("/api/v1/auth/**","/swagger-ui/**","/v3/api/docs/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/error").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 ).sessionManagement(sesion->sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS)

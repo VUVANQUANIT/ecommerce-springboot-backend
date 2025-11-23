@@ -27,24 +27,43 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
             )throws ServletException, IOException{
-        final String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-        final String jwt = authHeader.substring(7);
-        final String userEmail = jwtService.extractUsername(jwt);
-
-        if(userEmail != null&& SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities()
-                );
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            final String authHeader = request.getHeader("Authorization");
+            
+            // Nếu không có Authorization header hoặc không bắt đầu bằng "Bearer " → skip
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                filterChain.doFilter(request, response);
+                return;
             }
+            
+            // Extract JWT token (bỏ "Bearer " prefix)
+            final String jwt = authHeader.substring(7);
+            
+            // Kiểm tra token có rỗng không
+            if (jwt == null || jwt.trim().isEmpty()) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+            
+            final String userEmail = jwtService.extractUsername(jwt);
+
+            // Nếu có email và chưa có authentication → xác thực
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+                if (jwtService.isTokenValid(jwt, userDetails)) {
+                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities()
+                    );
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            }
+        } catch (Exception e) {
+            // Nếu có lỗi khi xử lý JWT, chỉ log và tiếp tục filter chain
+            // Không throw exception để không chặn request
+            logger.error("Error processing JWT token", e);
         }
+        
         filterChain.doFilter(request, response);
     }
 }
