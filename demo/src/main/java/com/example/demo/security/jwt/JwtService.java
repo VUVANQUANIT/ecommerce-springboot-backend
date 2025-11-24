@@ -5,6 +5,8 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,7 @@ public class JwtService {
 
     @Value("${jwt.refresh-token-expiration}")
     private long refreshTokenExpiration;
+    private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
 
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
@@ -80,21 +83,44 @@ public class JwtService {
             throw new RuntimeException("Lỗi xử lý JWT token: " + e.getMessage(), e);
         }
     }
-    
-    private SecretKey getSignInKey(){
+
+    private SecretKey getSignInKey() {
         try {
-            // Kiểm tra xem secret có phải là BASE64 không
             byte[] keyBytes;
-            try {
+            if (isBase64(secret)) {
                 keyBytes = Decoders.BASE64.decode(secret);
-            } catch (IllegalArgumentException e) {
-                // Nếu không phải BASE64, sử dụng trực tiếp string làm key
-                // Lưu ý: Secret key nên được mã hóa BASE64 để đảm bảo độ dài phù hợp
-                keyBytes = secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            } else {
+                keyBytes = createSecureKeyFromString(secret);
             }
+            if (keyBytes.length < 32)
+            {
+                logger.warn("JWT secret key might be too weak. Recommended length: 32 bytes (256-bit)");
+            }
+
             return Keys.hmacShaKeyFor(keyBytes);
+
         } catch (Exception e) {
-            throw new RuntimeException("Lỗi khởi tạo JWT secret key: " + e.getMessage(), e);
+            logger.error("Failed to initialize JWT secret key: {}", e.getMessage());
+            throw new RuntimeException("JWT secret key configuration error", e);
+        }
+    }
+
+    private boolean isBase64(String value) {
+        try {
+            Decoders.BASE64.decode(value);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    private byte[] createSecureKeyFromString(String secret) {
+        try {
+            // Sử dụng SHA-256 để tạo key 32 bytes cố định từ string
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return digest.digest(secret.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create secure key from string", e);
         }
     }
 }

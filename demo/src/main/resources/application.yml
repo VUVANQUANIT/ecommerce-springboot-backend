@@ -3,10 +3,10 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://postgres:5432/ecommerce_db
+    url: jdbc:postgresql://localhost:5432/ecommerce_db
     username: postgres
     password: 123456
-
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -43,7 +43,7 @@ springdoc:
             enable: true
 
 jwt:
-  secret: ${JWT_SECRET:uLx1jHj1mPJ0xDyfq7YJ7avSdQpwqJCD0cXMNVL2o4E}  # sẽ đổi thành biến môi trường
+  secret: ${JWT_SECRET:GJm6b9A3Emn8d0uU2qY9TWVtC/3Yt7qA7UAeWXVRwYE=}  # sẽ đổi thành biến môi trường
   access-token-expiration: 86400000   # 24h
   refresh-token-expiration: 604800000 # 7 ngày
 
